@@ -160,7 +160,9 @@ func init() {
 			}},
 		}, {
 			Name: "bucket_policy_only",
-			Help: `Access checks should use bucket-level IAM policies.
+			Help: `Deprecated: use --gcs-uniform-bucket-level-access.
+
+Access checks should use uniform bucket-level access.
 
 If you want to upload objects to a bucket with Bucket Policy Only set
 then you will need to set this.
@@ -169,9 +171,25 @@ When it is set, rclone:
 
 - ignores ACLs set on buckets
 - ignores ACLs set on objects
-- creates buckets with Bucket Policy Only set
+- creates buckets with Uniform Bucket-Level Access set
 
-Docs: https://cloud.google.com/storage/docs/bucket-policy-only
+Docs: https://cloud.google.com/storage/docs/uniform-bucket-level-access
+`,
+			Default: false,
+		}, {
+			Name: "uniform_bucket_level_access",
+			Help: `Access checks should use uniform bucket-level access.
+
+If you want to upload objects to a bucket with Uniform Bucket-Level Access set
+then you will need to set this.
+
+When it is set, rclone:
+
+- ignores ACLs set on buckets
+- ignores ACLs set on objects
+- creates buckets with Uniform Bucket-Level Access set
+
+Docs: https://cloud.google.com/storage/docs/uniform-bucket-level-access
 `,
 			Default: false,
 		}, {
@@ -378,6 +396,7 @@ type Options struct {
 	ObjectACL                 string               `config:"object_acl"`
 	BucketACL                 string               `config:"bucket_acl"`
 	BucketPolicyOnly          bool                 `config:"bucket_policy_only"`
+	UniformBucketLevelAccess  bool                 `config:"uniform_bucket_level_access"`
 	Location                  string               `config:"location"`
 	StorageClass              string               `config:"storage_class"`
 	NoCheckBucket             bool                 `config:"no_check_bucket"`
@@ -444,6 +463,11 @@ func (f *Fs) String() string {
 // Features returns the optional features of this Fs
 func (f *Fs) Features() *fs.Features {
 	return f.features
+}
+
+// uniformAccess returns true if uniform bucket-level access is enabled via options
+func (f *Fs) uniformAccess() bool {
+	return f.opt.BucketPolicyOnly || f.opt.UniformBucketLevelAccess
 }
 
 // shouldRetry determines whether a given err rates being retried
@@ -1003,16 +1027,19 @@ func (f *Fs) makeBucket(ctx context.Context, bucket string) (err error) {
 			Location:     f.opt.Location,
 			StorageClass: f.opt.StorageClass,
 		}
-		if f.opt.BucketPolicyOnly {
+		if f.uniformAccess() {
 			bucket.IamConfiguration = &storage.BucketIamConfiguration{
 				BucketPolicyOnly: &storage.BucketIamConfigurationBucketPolicyOnly{
+					Enabled: true,
+				},
+				UniformBucketLevelAccess: &storage.BucketIamConfigurationUniformBucketLevelAccess{
 					Enabled: true,
 				},
 			}
 		}
 		return f.pacer.Call(func() (bool, error) {
 			insertBucket := f.svc.Buckets.Insert(f.opt.ProjectNumber, &bucket)
-			if !f.opt.BucketPolicyOnly {
+			if !f.uniformAccess() {
 				insertBucket.PredefinedAcl(f.opt.BucketACL)
 			}
 			insertBucket = insertBucket.Context(ctx)
@@ -1100,7 +1127,7 @@ func (f *Fs) Copy(ctx context.Context, src fs.Object, remote string) (fs.Object,
 	}
 
 	rewriteRequest := f.svc.Objects.Rewrite(srcBucket, srcPath, dstBucket, dstPath, nil)
-	if !f.opt.BucketPolicyOnly {
+	if !f.uniformAccess() {
 		rewriteRequest.DestinationPredefinedAcl(f.opt.ObjectACL)
 	}
 	var rewriteResponse *storage.RewriteResponse
@@ -1299,7 +1326,7 @@ func (o *Object) SetModTime(ctx context.Context, modTime time.Time) (err error) 
 	var newObject *storage.Object
 	err = o.fs.pacer.Call(func() (bool, error) {
 		copyObject := o.fs.svc.Objects.Copy(bucket, bucketPath, bucket, bucketPath, object)
-		if !o.fs.opt.BucketPolicyOnly {
+		if !o.fs.uniformAccess() {
 			copyObject.DestinationPredefinedAcl(o.fs.opt.ObjectACL)
 		}
 		copyObject = copyObject.Context(ctx)
@@ -1419,7 +1446,7 @@ func (o *Object) Update(ctx context.Context, in io.Reader, src fs.ObjectInfo, op
 	var newObject *storage.Object
 	err = o.fs.pacer.CallNoRetry(func() (bool, error) {
 		insertObject := o.fs.svc.Objects.Insert(bucket, &object).Media(in, googleapi.ContentType("")).Name(object.Name)
-		if !o.fs.opt.BucketPolicyOnly {
+		if !o.fs.uniformAccess() {
 			insertObject.PredefinedAcl(o.fs.opt.ObjectACL)
 		}
 		insertObject = insertObject.Context(ctx)

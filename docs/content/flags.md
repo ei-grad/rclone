@@ -616,7 +616,8 @@ Backend-only flags (these can be set in the config file also).
       --gcs-anonymous                                       Access public buckets and objects without credentials
       --gcs-auth-url string                                 Auth server URL
       --gcs-bucket-acl string                               Access Control List for new buckets
-      --gcs-bucket-policy-only                              Access checks should use bucket-level IAM policies
+      --gcs-bucket-policy-only                              Access checks should use uniform bucket-level access (deprecated)
+      --gcs-uniform-bucket-level-access                     Access checks should use uniform bucket-level access
       --gcs-client-credentials                              Use client credentials OAuth flow
       --gcs-client-id string                                OAuth Client Id
       --gcs-client-secret string                            OAuth Client Secret
