@@ -483,7 +483,9 @@ Properties:
 
 #### --gcs-bucket-policy-only
 
-Access checks should use bucket-level IAM policies.
+Deprecated: use `--gcs-uniform-bucket-level-access`.
+
+Access checks should use uniform bucket-level access.
 
 If you want to upload objects to a bucket with Bucket Policy Only set
 then you will need to set this.
@@ -492,15 +494,38 @@ When it is set, rclone:
 
 - ignores ACLs set on buckets
 - ignores ACLs set on objects
-- creates buckets with Bucket Policy Only set
+- creates buckets with Uniform Bucket-Level Access set
 
-Docs: https://cloud.google.com/storage/docs/bucket-policy-only
+Docs: https://cloud.google.com/storage/docs/uniform-bucket-level-access
 
 
 Properties:
 
 - Config:      bucket_policy_only
 - Env Var:     RCLONE_GCS_BUCKET_POLICY_ONLY
+- Type:        bool
+- Default:     false
+
+#### --gcs-uniform-bucket-level-access
+
+Access checks should use uniform bucket-level access.
+
+If you want to upload objects to a bucket with Uniform Bucket-Level Access set
+then you will need to set this.
+
+When it is set, rclone:
+
+- ignores ACLs set on buckets
+- ignores ACLs set on objects
+- creates buckets with Uniform Bucket-Level Access set
+
+Docs: https://cloud.google.com/storage/docs/uniform-bucket-level-access
+
+
+Properties:
+
+- Config:      uniform_bucket_level_access
+- Env Var:     RCLONE_GCS_UNIFORM_BUCKET_LEVEL_ACCESS
 - Type:        bool
 - Default:     false
 
